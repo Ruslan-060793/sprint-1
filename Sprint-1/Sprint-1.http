@@ -1,0 +1,16 @@
+@Sprint_1_HostAddress = http://localhost:5187
+
+GET {{Sprint_1_HostAddress}}/events
+Accept: application/json
+
+###
+
+POST {{Sprint_1_HostAddress}}/events
+Content-Type: application/json
+
+{
+  "title": "Sprint Planning",
+  "description": "Планирование задач на следующую неделю",
+  "startAt": "2026-03-10T10:00:00Z",
+  "endAt": "2026-03-10T11:00:00Z"
+}
