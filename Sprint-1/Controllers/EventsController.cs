@@ -10,11 +10,20 @@ namespace Sprint_1.Controllers;
 public class EventsController(IEventService eventService) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<EventResponseDto>), StatusCodes.Status200OK)]
-    public ActionResult<IEnumerable<EventResponseDto>> GetAll()
+    [ProducesResponseType(typeof(PaginatedResult<EventResponseDto>), StatusCodes.Status200OK)]
+    public ActionResult<PaginatedResult<EventResponseDto>> GetAll([FromQuery] EventFilterDto filter)
     {
-        var events = eventService.GetAll().Select(MapToResponse);
-        return Ok(events);
+        var result = eventService.GetAll(filter);
+
+        var response = new PaginatedResult<EventResponseDto>
+        {
+            Items = result.Items.Select(MapToResponse).ToList().AsReadOnly(),
+            TotalCount = result.TotalCount,
+            Page = result.Page,
+            PageSize = result.PageSize
+        };
+
+        return Ok(response);
     }
 
     [HttpGet("{id:guid}")]
@@ -23,17 +32,12 @@ public class EventsController(IEventService eventService) : ControllerBase
     public ActionResult<EventResponseDto> GetById(Guid id)
     {
         var eventItem = eventService.GetById(id);
-        if (eventItem is null)
-        {
-            return NotFound();
-        }
-
         return Ok(MapToResponse(eventItem));
     }
 
     [HttpPost]
     [ProducesResponseType(typeof(EventResponseDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public ActionResult<EventResponseDto> Create([FromBody] EventRequestDto request)
     {
         var eventToCreate = MapToModel(request);
@@ -44,17 +48,12 @@ public class EventsController(IEventService eventService) : ControllerBase
 
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(EventResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<EventResponseDto> Update(Guid id, [FromBody] EventRequestDto request)
     {
         var eventToUpdate = MapToModel(request);
         var updatedEvent = eventService.Update(id, eventToUpdate);
-
-        if (updatedEvent is null)
-        {
-            return NotFound();
-        }
 
         return Ok(MapToResponse(updatedEvent));
     }
@@ -64,12 +63,7 @@ public class EventsController(IEventService eventService) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Delete(Guid id)
     {
-        var deleted = eventService.Delete(id);
-        if (!deleted)
-        {
-            return NotFound();
-        }
-
+        eventService.Delete(id);
         return NoContent();
     }
 

@@ -1,16 +1,17 @@
+using Sprint_1.DTOs;
 using Sprint_1.Models;
 
 namespace Sprint_1.Services;
 
 public interface IEventService
 {
-    IReadOnlyCollection<Event> GetAll();
+    PaginatedResult<Event> GetAll(EventFilterDto filter);
 
-    Event? GetById(Guid id);
+    Event GetById(Guid id);
 
     Event Create(Event eventToCreate);
 
-    Event? Update(Guid id, Event updatedEvent);
+    Event Update(Guid id, Event updatedEvent);
 
-    bool Delete(Guid id);
+    void Delete(Guid id);
 }

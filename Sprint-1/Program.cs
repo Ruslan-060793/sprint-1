@@ -1,3 +1,4 @@
+using Sprint_1.Middleware;
 using Sprint_1.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,6 +8,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IEventService, EventService>();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapOpenApi();
 app.UseSwaggerUI(options =>
