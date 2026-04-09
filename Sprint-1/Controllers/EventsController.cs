@@ -7,7 +7,7 @@ namespace Sprint_1.Controllers;
 
 [ApiController]
 [Route("events")]
-public class EventsController(IEventService eventService) : ControllerBase
+public class EventsController(IEventService eventService, IBookingService bookingService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<EventResponseDto>), StatusCodes.Status200OK)]
@@ -65,6 +65,29 @@ public class EventsController(IEventService eventService) : ControllerBase
     {
         eventService.Delete(id);
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/book")]
+    [ProducesResponseType(typeof(BookingResponseDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Book(Guid id)
+    {
+        var booking = await bookingService.CreateBookingAsync(id);
+
+        var response = new BookingResponseDto
+        {
+            Id = booking.Id,
+            EventId = booking.EventId,
+            Status = booking.Status,
+            CreatedAt = booking.CreatedAt,
+            ProcessedAt = booking.ProcessedAt
+        };
+
+        return AcceptedAtAction(
+            actionName: nameof(BookingsController.GetById),
+            controllerName: "Bookings",
+            routeValues: new { id = booking.Id },
+            value: response);
     }
 
     private static Event MapToModel(EventRequestDto request)
