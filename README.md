@@ -16,7 +16,16 @@
 - глобальная обработка ошибок через middleware (Problem Details RFC 7807);
 - фильтрация событий по названию и диапазону дат;
 - пагинация результатов;
-- юнит-тесты на xUnit (19 тестов).
+- юнит-тесты на xUnit.
+
+### Sprint 3
+- сущность `Booking` с полями Id, EventId, Status, CreatedAt, ProcessedAt;
+- перечисление `BookingStatus`: Pending, Confirmed, Rejected;
+- сервис `BookingService` с in-memory хранилищем;
+- эндпоинт `POST /events/{id}/book` — 202 Accepted + Location;
+- эндпоинт `GET /bookings/{id}` — текущий статус брони;
+- фоновая обработка через `BackgroundService` (паттерн «быстрый ответ + отложенная обработка»);
+- юнит-тесты для `BookingService` (27 тестов всего).
 
 ## Требования
 
@@ -49,6 +58,8 @@ dotnet test
 | POST | `/events` | Создать событие |
 | PUT | `/events/{id}` | Обновить событие |
 | DELETE | `/events/{id}` | Удалить событие |
+| POST | `/events/{id}/book` | Создать бронирование (202 Accepted) |
+| GET | `/bookings/{id}` | Получить статус бронирования |
 
 ## Фильтрация и пагинация
 
@@ -135,6 +146,48 @@ GET /events?title=planning&page=1&pageSize=5
   "detail": "...",
   "instance": "/events"
 }
+```
+
+## Бронирования (Booking)
+
+### Модель Booking
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | Guid | Уникальный идентификатор брони |
+| `eventId` | Guid | ID события |
+| `status` | BookingStatus | Pending / Confirmed / Rejected |
+| `createdAt` | DateTime | Дата создания |
+| `processedAt` | DateTime? | Дата обработки (заполняется после обработки) |
+
+### Фоновая обработка
+
+После создания бронь получает статус `Pending`. Фоновый сервис (`BackgroundService`) периодически опрашивает хранилище, находит необработанные брони и с задержкой в 2 секунды (имитация внешней системы) переводит их в статус `Confirmed`, заполняя поле `processedAt`.
+
+### Пример сценария использования
+
+1. Создать событие:
+```
+POST /events
+{"title": "Конференция", "startAt": "2026-05-01T10:00:00Z", "endAt": "2026-05-01T18:00:00Z"}
+```
+
+2. Забронировать:
+```
+POST /events/{eventId}/book
+→ 202 Accepted + Location: /bookings/{bookingId}
+```
+
+3. Проверить статус сразу:
+```
+GET /bookings/{bookingId}
+→ {"status": "Pending", ...}
+```
+
+4. Подождать 3–5 секунд и проверить снова:
+```
+GET /bookings/{bookingId}
+→ {"status": "Confirmed", "processedAt": "2026-05-01T...", ...}
 ```
 
 ## Правила валидации
