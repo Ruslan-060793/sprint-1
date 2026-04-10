@@ -77,22 +77,35 @@ public class BookingServiceTests
     }
 
     [Fact]
-    public async Task UpdateBooking_ChangesStatus_ReflectedInGetById()
+    public async Task ConfirmBooking_ChangesStatus_ReflectedInGetById()
     {
         // Arrange
         var ev = CreateAndStoreEvent();
         var created = await _bookingService.CreateBookingAsync(ev.Id);
 
         // Act
-        var toUpdate = await _bookingService.GetBookingByIdAsync(created.Id);
-        toUpdate.Status = BookingStatus.Confirmed;
-        toUpdate.ProcessedAt = DateTime.UtcNow;
-        _bookingService.UpdateBooking(toUpdate);
+        _bookingService.ConfirmBooking(created.Id);
 
         // Assert
         var updated = await _bookingService.GetBookingByIdAsync(created.Id);
         Assert.Equal(BookingStatus.Confirmed, updated.Status);
         Assert.NotNull(updated.ProcessedAt);
+    }
+
+    [Fact]
+    public async Task RejectBooking_ChangesStatus_ReflectedInGetById()
+    {
+        // Arrange
+        var ev = CreateAndStoreEvent();
+        var created = await _bookingService.CreateBookingAsync(ev.Id);
+
+        // Act
+        _bookingService.RejectBooking(created.Id);
+
+        // Assert
+        var rejected = await _bookingService.GetBookingByIdAsync(created.Id);
+        Assert.Equal(BookingStatus.Rejected, rejected.Status);
+        Assert.NotNull(rejected.ProcessedAt);
     }
 
     [Fact]
@@ -104,10 +117,7 @@ public class BookingServiceTests
         await _bookingService.CreateBookingAsync(ev.Id);
 
         // Подтверждаем первую
-        var toConfirm = await _bookingService.GetBookingByIdAsync(booking1.Id);
-        toConfirm.Status = BookingStatus.Confirmed;
-        toConfirm.ProcessedAt = DateTime.UtcNow;
-        _bookingService.UpdateBooking(toConfirm);
+        _bookingService.ConfirmBooking(booking1.Id);
 
         // Act
         var pending = _bookingService.GetPendingBookings();
@@ -115,6 +125,22 @@ public class BookingServiceTests
         // Assert
         Assert.Single(pending);
         Assert.All(pending, b => Assert.Equal(BookingStatus.Pending, b.Status));
+    }
+
+    [Fact]
+    public async Task ProcessBookingAsync_Success_ConfirmsBooking()
+    {
+        // Arrange
+        var ev = CreateAndStoreEvent();
+        var created = await _bookingService.CreateBookingAsync(ev.Id);
+
+        // Act
+        await _bookingService.ProcessBookingAsync(created, CancellationToken.None);
+
+        // Assert
+        var processed = await _bookingService.GetBookingByIdAsync(created.Id);
+        Assert.Equal(BookingStatus.Confirmed, processed.Status);
+        Assert.NotNull(processed.ProcessedAt);
     }
 
     // ===== Неуспешные сценарии =====
