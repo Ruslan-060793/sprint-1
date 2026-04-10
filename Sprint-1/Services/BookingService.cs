@@ -15,17 +15,10 @@ public class BookingService(IEventService eventService) : IBookingService
 
         lock (_lock)
         {
-            var booking = new Booking
-            {
-                Id = Guid.NewGuid(),
-                EventId = eventId,
-                Status = BookingStatus.Pending,
-                CreatedAt = DateTime.UtcNow
-            };
-
+            var booking = Booking.CreatePending(eventId);
             _bookings.Add(booking);
 
-            return Task.FromResult(Clone(booking));
+            return Task.FromResult(booking.Clone());
         }
     }
 
@@ -39,7 +32,7 @@ public class BookingService(IEventService eventService) : IBookingService
                 throw new NotFoundException($"Бронирование с id '{bookingId}' не найдено.");
             }
 
-            return Task.FromResult(Clone(booking));
+            return Task.FromResult(booking.Clone());
         }
     }
 
@@ -49,36 +42,58 @@ public class BookingService(IEventService eventService) : IBookingService
         {
             return _bookings
                 .Where(b => b.Status == BookingStatus.Pending)
-                .Select(Clone)
+                .Select(b => b.Clone())
                 .ToList()
                 .AsReadOnly();
         }
     }
 
-    public void UpdateBooking(Booking booking)
+    public void ConfirmBooking(Guid bookingId)
     {
         lock (_lock)
         {
-            var index = _bookings.FindIndex(b => b.Id == booking.Id);
-            if (index < 0)
+            var booking = _bookings.FirstOrDefault(b => b.Id == bookingId);
+            if (booking is null)
             {
-                throw new NotFoundException($"Бронирование с id '{booking.Id}' не найдено.");
+                throw new NotFoundException($"Бронирование с id '{bookingId}' не найдено.");
             }
 
-            _bookings[index] = Clone(booking);
+            booking.Confirm();
         }
     }
 
-    private static Booking Clone(Booking booking)
+    public void RejectBooking(Guid bookingId)
     {
-        return new Booking
+        lock (_lock)
         {
-            Id = booking.Id,
-            EventId = booking.EventId,
-            Status = booking.Status,
-            CreatedAt = booking.CreatedAt,
-            ProcessedAt = booking.ProcessedAt
-        };
+            var booking = _bookings.FirstOrDefault(b => b.Id == bookingId);
+            if (booking is null)
+            {
+                throw new NotFoundException($"Бронирование с id '{bookingId}' не найдено.");
+            }
+
+            booking.Reject();
+        }
+    }
+
+    public async Task ProcessBookingAsync(Booking booking, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Имитация обращения к внешней системе (оплата, проверка мест и т.д.)
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+
+            ConfirmBooking(booking.Id);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // Пробрасываем отмену дальше
+        }
+        catch (Exception)
+        {
+            RejectBooking(booking.Id);
+            throw;
+        }
     }
 }
 

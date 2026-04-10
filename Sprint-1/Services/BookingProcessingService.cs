@@ -1,5 +1,3 @@
-using Sprint_1.Models;
-
 namespace Sprint_1.Services;
 
 public class BookingProcessingService(
@@ -25,30 +23,33 @@ public class BookingProcessingService(
                         "Обработка бронирования {BookingId} для события {EventId}...",
                         booking.Id, booking.EventId);
 
-                    // Имитация обращения к внешней системе
-                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                    try
+                    {
+                        await bookingService.ProcessBookingAsync(booking, stoppingToken);
 
-                    booking.Status = BookingStatus.Confirmed;
-                    booking.ProcessedAt = DateTime.UtcNow;
-
-                    bookingService.UpdateBooking(booking);
-
-                    logger.LogInformation(
-                        "Бронирование {BookingId} обработано. Статус: {Status}.",
-                        booking.Id, booking.Status);
+                        logger.LogInformation(
+                            "Бронирование {BookingId} подтверждено.", booking.Id);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw; // Пробрасываем отмену на уровень выше
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex,
+                            "Бронирование {BookingId} отклонено из-за ошибки.", booking.Id);
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                // Штатное завершение при остановке приложения
                 break;
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Ошибка при обработке бронирований.");
+                logger.LogError(ex, "Ошибка в цикле обработки бронирований.");
             }
 
-            // Пауза между циклами опроса
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
         }
 

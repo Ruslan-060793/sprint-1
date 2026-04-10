@@ -7,6 +7,8 @@ public interface IBookingService
     Task<Booking> CreateBookingAsync(Guid eventId);
     Task<Booking> GetBookingByIdAsync(Guid bookingId);
     IReadOnlyCollection<Booking> GetPendingBookings();
-    void UpdateBooking(Booking booking);
+    void ConfirmBooking(Guid bookingId);
+    void RejectBooking(Guid bookingId);
+    Task ProcessBookingAsync(Booking booking, CancellationToken cancellationToken);
 }
 
